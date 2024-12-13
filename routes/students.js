@@ -36,7 +36,12 @@ router.get('/', ash(async(req, res) => {
 router.get('/:id', ash(async(req, res) => {
   // Find student by Primary Key
   let student = await Student.findByPk(req.params.id, {include: [Campus]});  // Get the student and its associated campus
-  res.status(200).json(student);  // Status code 200 OK - request succeeded
+  //res.status(200).json(student);  // Status code 200 OK - request succeeded
+  if (student) {
+    res.status(200).json(student);  // Send the student as a JSON response
+  } else {
+    res.status(404).json({ error: "Student not found" });  // Return an error if student not found
+  }
 }));
 
 /* ADD NEW STUDENT */
@@ -58,13 +63,39 @@ router.delete('/:id', function(req, res, next) {
 });
 
 /* EDIT STUDENT */
-router.put('/:id', ash(async(req, res) => {
-  await Student.update(req.body,
-        { where: {id: req.params.id} }
-  );
-  // Find student by Primary Key
-  let student = await Student.findByPk(req.params.id);
-  res.status(201).json(student);  // Status code 201 Created - successful creation of a resource
+router.put('/:id', ash(async (req, res) => {
+  const { firstname, lastname, email, imageUrl, gpa, campusId } = req.body;
+
+  // Validate required fields
+  if (!firstname || !lastname || !email) {
+    return res.status(400).json({ error: "First name, last name, and email are required" });
+  }
+
+  try {
+    // Find the student to update
+    let student = await Student.findByPk(req.params.id);
+
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+
+    // Update the student with the provided data
+    student.firstname = firstname || student.firstname;
+    student.lastname = lastname || student.lastname;
+    student.email = email || student.email;
+    student.imageUrl = imageUrl || student.imageUrl;
+    student.gpa = gpa || student.gpa;
+    student.campusId = campusId || student.campusId;
+
+    // Save the updated student
+    await student.save();
+
+    // Return the updated student
+    res.status(200).json(student);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update student' });  // Handle errors
+  }
 }));
 
 // Export router, so that it can be imported to construct the apiRouter (app.js)
